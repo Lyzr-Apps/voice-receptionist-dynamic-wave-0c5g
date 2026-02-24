@@ -16,6 +16,16 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { Switch } from '@/components/ui/switch'
 import { Label } from '@/components/ui/label'
 
+// Helper to convert Int16Array to base64 safely (avoids stack overflow with large arrays)
+function int16ToBase64(int16: Int16Array): string {
+  const bytes = new Uint8Array(int16.buffer)
+  let binary = ''
+  for (let i = 0; i < bytes.length; i++) {
+    binary += String.fromCharCode(bytes[i])
+  }
+  return btoa(binary)
+}
+
 // ============================
 // CONSTANTS
 // ============================
@@ -221,7 +231,7 @@ function formatTimestamp(ts: string): string {
   try {
     const d = new Date(ts)
     return d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true })
-  } catch {
+  } catch (_e) {
     return ts
   }
 }
@@ -230,7 +240,7 @@ function formatDateFull(ts: string): string {
   try {
     const d = new Date(ts)
     return d.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' }) + ' at ' + d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true })
-  } catch {
+  } catch (_e) {
     return ts
   }
 }
@@ -239,7 +249,7 @@ function formatDateFull(ts: string): string {
 // ERROR BOUNDARY
 // ============================
 
-class ErrorBoundary extends React.Component<
+class PageErrorBoundary extends React.Component<
   { children: React.ReactNode },
   { hasError: boolean; error: string }
 > {
@@ -278,7 +288,7 @@ function Sidebar({ activeScreen, onNavigate }: { activeScreen: string; onNavigat
   ]
 
   return (
-    <div className="w-60 min-h-screen border-r border-border flex flex-col" style={{ backgroundColor: 'hsl(35 25% 90%)' }}>
+    <div className="w-60 min-h-screen border-r border-border flex flex-col" style={{ backgroundColor: 'hsl(35, 25%, 90%)' }}>
       <div className="p-5 pb-4">
         <div className="flex items-center gap-3">
           <div className="w-9 h-9 rounded-lg bg-primary flex items-center justify-center">
@@ -294,13 +304,14 @@ function Sidebar({ activeScreen, onNavigate }: { activeScreen: string; onNavigat
       <nav className="flex-1 p-3 space-y-1">
         {navItems.map((item) => {
           const isActive = activeScreen === item.id
+          const IconComp = item.icon
           return (
             <button
               key={item.id}
               onClick={() => onNavigate(item.id)}
               className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-sans font-medium transition-all duration-200 ${isActive ? 'bg-primary text-primary-foreground shadow-sm' : 'text-foreground hover:bg-secondary'}`}
             >
-              <item.icon className="w-4 h-4 flex-shrink-0" />
+              <IconComp className="w-4 h-4 flex-shrink-0" />
               {item.label}
             </button>
           )
@@ -399,7 +410,7 @@ function VoiceCallPanel({ isOpen, onClose }: { isOpen: boolean; onClose: () => v
           for (let i = 0; i < pcmData.length; i++) {
             int16[i] = Math.max(-32768, Math.min(32767, Math.floor(pcmData[i] * 32768)))
           }
-          const base64 = btoa(String.fromCharCode(...new Uint8Array(int16.buffer)))
+          const base64 = int16ToBase64(int16)
           ws.send(JSON.stringify({ type: 'audio', audio: base64, sampleRate: sampleRateRef.current }))
         }
       }
@@ -414,7 +425,7 @@ function VoiceCallPanel({ isOpen, onClose }: { isOpen: boolean; onClose: () => v
           } else if (msg.type === 'error') {
             setErrorMsg(msg.message || 'Voice agent error')
           }
-        } catch {
+        } catch (_e) {
           // non-JSON message, ignore
         }
       }
@@ -463,7 +474,7 @@ function VoiceCallPanel({ isOpen, onClose }: { isOpen: boolean; onClose: () => v
       const startTime = Math.max(now, nextPlayTimeRef.current)
       sourceNode.start(startTime)
       nextPlayTimeRef.current = startTime + buffer.duration
-    } catch {
+    } catch (_e) {
       // audio decode error, skip chunk
     }
   }, [])
@@ -476,7 +487,7 @@ function VoiceCallPanel({ isOpen, onClose }: { isOpen: boolean; onClose: () => v
     wsRef.current?.close()
     processorRef.current?.disconnect()
     mediaStreamRef.current?.getTracks().forEach(t => t.stop())
-    audioContextRef.current?.close().catch(() => {})
+    try { audioContextRef.current?.close() } catch (_e) { /* ignore */ }
     wsRef.current = null
     processorRef.current = null
     mediaStreamRef.current = null
@@ -624,7 +635,6 @@ function VoiceCallPanel({ isOpen, onClose }: { isOpen: boolean; onClose: () => v
 function DashboardScreen({ showSample, onTestCall }: { showSample: boolean; onTestCall: () => void }) {
   const calls = showSample ? MOCK_CALLS : []
   const totalCalls = calls.length
-  const completedCalls = calls.filter(c => c.status === 'completed').length
   const missedCalls = calls.filter(c => c.status === 'missed' || c.status === 'routed').length
   const topIntent = showSample ? 'Appointment' : '--'
 
@@ -672,12 +682,14 @@ function DashboardScreen({ showSample, onTestCall }: { showSample: boolean; onTe
 
       {/* Stats Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-        {stats.map((stat, idx) => (
+        {stats.map((stat, idx) => {
+          const StatIcon = stat.icon
+          return (
           <Card key={idx} className="bg-card shadow-sm">
             <CardContent className="p-5">
               <div className="flex items-center justify-between mb-3">
                 <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
-                  <stat.icon className="w-5 h-5 text-primary" />
+                  <StatIcon className="w-5 h-5 text-primary" />
                 </div>
                 {stat.trend && (
                   <div className={`flex items-center gap-0.5 text-xs font-sans font-medium ${stat.trendUp ? 'text-emerald-600' : 'text-red-500'}`}>
@@ -690,7 +702,8 @@ function DashboardScreen({ showSample, onTestCall }: { showSample: boolean; onTe
               <p className="text-xs text-muted-foreground font-sans mt-0.5">{stat.label}</p>
             </CardContent>
           </Card>
-        ))}
+          )
+        })}
       </div>
 
       {/* Two Column: Recent Calls + Test Call */}
@@ -1143,7 +1156,7 @@ function KnowledgeBaseScreen() {
     setTimeout(() => setDeleteStatus(''), 3000)
   }, [removeDocuments])
 
-  const getFileIcon = (fileType: string) => {
+  const getFileIcon = (_fileType: string) => {
     return <FiFile className="w-4 h-4" />
   }
 
@@ -1323,7 +1336,7 @@ export default function Page() {
   const [voiceCallOpen, setVoiceCallOpen] = useState(false)
 
   return (
-    <ErrorBoundary>
+    <PageErrorBoundary>
       <div className="min-h-screen bg-background text-foreground flex">
         {/* Sidebar */}
         <Sidebar activeScreen={activeScreen} onNavigate={setActiveScreen} />
@@ -1375,6 +1388,6 @@ export default function Page() {
         {/* Voice Call Panel */}
         <VoiceCallPanel isOpen={voiceCallOpen} onClose={() => setVoiceCallOpen(false)} />
       </div>
-    </ErrorBoundary>
+    </PageErrorBoundary>
   )
 }
