@@ -1,0 +1,12 @@
+{
+  "agents": [
+    {
+      "name": "Voice Receptionist Agent",
+      "agent_id": "699e084251690e37c3337a15",
+      "type": "voice",
+      "has_knowledge_base": true,
+      "rag_id": "699e082bb45a5c2df18fab39",
+      "rag_name": "voicedeskcompanykb7cfy"
+    }
+  ]
+}

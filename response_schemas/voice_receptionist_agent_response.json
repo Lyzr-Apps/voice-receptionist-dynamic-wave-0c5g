@@ -1,0 +1,8 @@
+{
+  "agent_name": "Voice Receptionist Agent",
+  "agent_id": "699e084251690e37c3337a15",
+  "description": "Handles all inbound voice calls \u2014 answers FAQs, schedules appointments, captures order/request details, routes calls to appropriate departments, and responds to general inquiries using company knowledge base. Uses memory to recognize returning callers and maintain context across calls.",
+  "agent_type": "voice",
+  "accessor": "websocket",
+  "auto_generated": true
+}

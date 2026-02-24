@@ -1,0 +1,26 @@
+{
+  "agent_name": "Voice Receptionist Agent",
+  "agent_type": "voice",
+  "accessor": "voice",
+  "has_module_outputs": false,
+  "has_knowledge_base": true,
+  "schema": {
+    "caller_name": "string",
+    "caller_intent": "string (faq | appointment | order | routing | general_inquiry)",
+    "summary": "string",
+    "transcript": "string",
+    "appointment_details": {
+      "date": "string",
+      "time": "string",
+      "purpose": "string"
+    },
+    "order_details": {
+      "items": "string",
+      "quantity": "string",
+      "notes": "string"
+    },
+    "routed_to": "string",
+    "call_duration": "string",
+    "status": "string (completed | missed | routed | voicemail)"
+  }
+}
